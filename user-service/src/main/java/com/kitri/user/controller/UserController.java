@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.servlet.http.HttpServletResponse;
+
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -141,18 +143,20 @@ public class UserController {
 	}
 	
 	
-	@PostMapping("login")
+	@PostMapping("/login")
 	//토큰 정보 json body로 확인하기 위한 반환 타입...........
-	public ResponseEntity<Map<String, Object>> login(@RequestBody RequestUser user) {
+	public ResponseEntity<Map<String, Object>> login(@RequestBody RequestUser user,
+			HttpServletResponse response) {
 		ModelMapper mapper = new ModelMapper();
 		   mapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
 		  //service email, password valid check
 		 //valid한 경우 JWTService 이용 token 생성 리턴
 		   Map<String, Object> resultMap = new HashMap<>();
+		   String accessToken = null;
 		   try {
 			  UserDto userDto = userService.loginCheck(mapper.map(user, UserDto.class));
 			  if (userDto != null) {
-					String accessToken = jwtService.createAccessToken("userId", userDto.getUserId());// key, data
+					accessToken = jwtService.createAccessToken("userId", userDto.getUserId());// key, data
 					String refreshToken = jwtService.createRefreshToken("userId",userDto.getUserId());// key, data
 					//refreshtoken redis memory db에 저장....
 					log.debug("로그인 accessToken 정보 : {}", accessToken);
@@ -160,12 +164,18 @@ public class UserController {
 					resultMap.put("access-token", accessToken);
 					resultMap.put("refresh-token", refreshToken);
 					resultMap.put("message", SUCCESS);
+					
+					//응답 헤더에 accessToken 담기
+					//response.addHeader("access-token", accessToken);
 				}		  
 		  
 		  }catch(UnAuthorizedException loginError) {
 			  exeptionHanler(loginError);
 		  }
-		   return ResponseEntity.status(HttpStatus.ACCEPTED).body(resultMap);
+		   return ResponseEntity
+				   .status(HttpStatus.ACCEPTED)
+				   .header("access-token", accessToken)
+				   .body(resultMap);
 
 	}
 	
