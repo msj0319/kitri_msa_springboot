@@ -14,4 +14,5 @@ public interface UserService {
 	List<UserDto> getUsers();
 	UserDto modifyUser(UserDto user);
 	String removeUser(String userId);
+	UserDto loginCheck(UserDto user);
 }

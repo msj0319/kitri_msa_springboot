@@ -22,3 +22,6 @@ spring:
 
 greeting:
   name : Welcome User Service!!
+
+token:
+  salt: kitri

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import com.kitri.user.dao.UserEntity;
 import com.kitri.user.dao.UserRepository;
 import com.kitri.user.dto.UserDto;
+import com.kitri.user.exception.UnAuthenticationException;
 
 /**
  * Users Business Logic 구현
@@ -98,6 +99,19 @@ public class UserServiceImpl implements UserService {
 	public String removeUser(String userId) {
 		dao.deleteById(dao.findByUserId(userId).getId());
 		return userId;
+	}
+
+	@Override
+	public UserDto loginCheck(UserDto user) throws UnAuthenticationException {
+		ModelMapper mapper = new ModelMapper();
+		mapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
+		
+		UserEntity userEntity = dao.findByEmail(user.getEmail());
+		//user.getPassword와 userEntity.encryptPassword 비교
+		if (BCrypt.checkpw(user.getPassword(), userEntity.getEncryptedPassword())) {
+			return mapper.map(userEntity, UserDto.class);
+		}
+		throw new UnAuthenticationException();
 	}
 	
 }

@@ -1,7 +1,9 @@
 package com.kitri.user.controller;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
@@ -17,17 +19,25 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.kitri.user.dao.UserEntity;
 import com.kitri.user.dto.UserDto;
+import com.kitri.user.exception.UnAuthorizedException;
+import com.kitri.user.service.JWTService;
 import com.kitri.user.service.UserService;
 import com.kitri.user.vo.RequestUser;
 import com.kitri.user.vo.ResponseUser;
 
+import lombok.extern.slf4j.Slf4j;
+
 @RestController
 @RequestMapping("/users")
+@Slf4j
 public class UserController {
 	
+	private static final String SUCCESS = "success";
+	private static final String FAIL = "fail";
+	
 	UserService userService;
+	JWTService jwtService;
 
 //  interface 구현 객체가 여러 개 일때
 //	@Autowired
@@ -37,8 +47,9 @@ public class UserController {
 //	}
 	
 	@Autowired
-	public UserController(UserService userService) {
+	public UserController(UserService userService, JWTService jwtService) {
 		this.userService = userService;
+		this.jwtService = jwtService;
 	}
 	
 	/**
@@ -126,5 +137,39 @@ public class UserController {
 		String result = userService.removeUser(userId);
 		return ResponseEntity.status(HttpStatus.OK).body(result);
 	}
+	
+	
+	@PostMapping("login")
+	public ResponseEntity<Map<String, Object>> login(@RequestBody RequestUser user) {
+		ModelMapper mapper = new ModelMapper();
+		   mapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
+		  //service email, password valid check
+		 //valid한 경우 JWTService 이용 token 생성 리턴
+		   Map<String, Object> resultMap = new HashMap<>();
+		   try {
+			  UserDto userDto = userService.loginCheck(mapper.map(user, UserDto.class));
+			  if (userDto != null) {
+					String accessToken = jwtService.createAccessToken("userId", userDto.getUserId());// key, data
+					String refreshToken = jwtService.createRefreshToken("userId",userDto.getUserId());// key, data
+					//refreshtoken redis memory db에 저장....
+					log.debug("로그인 accessToken 정보 : {}", accessToken);
+					log.debug("로그인 refreshToken 정보 : {}", refreshToken);
+					resultMap.put("access-token", accessToken);
+					resultMap.put("refresh-token", refreshToken);
+					resultMap.put("message", SUCCESS);
+				}		  
+		  
+		  }catch(UnAuthorizedException loginError) {
+			  exeptionHanler(loginError);
+		  }
+		   return ResponseEntity.status(HttpStatus.ACCEPTED).body(resultMap);
+
+	}
+	
+	private ResponseEntity<String> exeptionHanler(Exception error) {
+		   //exception type별로 처리
+		   return new ResponseEntity<String>(FAIL, HttpStatus.NO_CONTENT);
+	   } 
+
 	
 }
