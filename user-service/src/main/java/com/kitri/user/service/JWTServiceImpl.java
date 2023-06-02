@@ -28,15 +28,15 @@ public class JWTServiceImpl implements JWTService {
 
 //	SALT는 토큰 유효성 확인 시 사용하기 때문에 외부에 노출되지 않게 주의해야 한다.
 //	@Value("${token.salt}")
-	Environment env;
-	
-	@Autowired
-	public JWTServiceImpl(Environment env) {
-		this.env = env;
-	}
-	
-	private final String SALT = env.getProperty("token.salt");
-	
+//	Environment env;
+//	
+//	@Autowired
+//	public JWTServiceImpl(Environment env) {
+//		this.env = env;
+//	}
+//	
+//	private final String SALT = env.getProperty("token.salt");
+//	
 	private static final int ACCESS_TOKEN_EXPIRE_MINUTES = 1; // 분단위
 	private static final int REFRESH_TOKEN_EXPIRE_MINUTES = 2; // 주단위
 
@@ -80,11 +80,11 @@ public class JWTServiceImpl implements JWTService {
 	
 	
 	// Signature 설정에 들어갈 key 생성.
-	private byte[] generateKey() {
+	private byte[] generateKey(String salt) {
 		byte[] key = null;
 		try {
 			// charset 설정 안하면 사용자 플랫폼의 기본 인코딩 설정으로 인코딩 됨.
-			key = SALT.getBytes("UTF-8");
+			key = salt.getBytes("UTF-8");
 		} catch (UnsupportedEncodingException e) {
 			if (log.isInfoEnabled()) {
 				e.printStackTrace();
@@ -98,12 +98,12 @@ public class JWTServiceImpl implements JWTService {
 
 //	전달 받은 토큰이 제대로 생성된것인지 확인 하고 문제가 있다면 UnauthorizedException을 발생.
 	@Override
-	public boolean checkToken(String jwt) {
+	public boolean checkToken(String jwt, String key) {
 		try {
 //			Json Web Signature? 서버에서 인증을 근거로 인증정보를 서버의 private key로 서명 한것을 토큰화 한것
 //			setSigningKey : JWS 서명 검증을 위한  secret key 세팅
 //			parseClaimsJws : 파싱하여 원본 jws 만들기
-			Jws<Claims> claims = Jwts.parser().setSigningKey(this.generateKey()).parseClaimsJws(jwt);
+			Jws<Claims> claims = Jwts.parser().setSigningKey(this.generateKey(key)).parseClaimsJws(jwt);
 //			Claims 는 Map의 구현체 형태
 			log.debug("claims: {}", claims);
 			return true;
